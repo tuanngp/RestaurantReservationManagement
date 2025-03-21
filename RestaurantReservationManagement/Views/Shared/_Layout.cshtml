@@ -1,0 +1,109 @@
+﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - FUCourseManagement</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/FUCourseManagement.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="wrapper">
+        <!-- Sidebar -->
+        <nav id="sidebar" class="animate__animated animate__slideInLeft">
+            <div class="sidebar-header">
+                <h3>
+                    <i class="fas fa-graduation-cap"></i>
+                    <span>FU Course</span>
+                </h3>
+            </div>
+
+            <ul class="list-unstyled components">
+                <li>
+                    <a asp-controller="Home" asp-action="Index" class="nav-link">
+                        <i class="fas fa-home"></i>
+                        <span>Home</span>
+                    </a>
+                </li>
+                <li>
+                    <a asp-controller="Tables" asp-action="Index" class="nav-link">
+                        <i class="fas fa-clipboard-list"></i>
+                        <span>Tables</span>
+                    </a>
+                </li>
+                <li>
+                    <a asp-controller="Reservations" asp-action="Index" class="nav-link">
+                        <i class="fas fa-book"></i>
+                        <span>Reservations</span>
+                    </a>
+                </li>
+                @if(User.IsInRole("Admin")) {
+                    <li>
+                        <a asp-controller="Users" asp-action="Index" class="nav-link">
+                            <i class="fas fa-users"></i>
+                            <span>Users</span>
+                        </a>
+                    </li>
+                }
+                @if (!User.Identity?.IsAuthenticated ?? false) {
+                    <div class="auth-buttons">
+                        <li class="bottom-items">
+                            <a asp-controller="Auth" asp-action="Login" class="nav-link">
+                                <i class="fas fa-sign-in-alt"></i>
+                                <span>Login</span>
+                            </a>
+                        </li>
+                        <li class="bottom-items">
+                            <a asp-controller="Auth" asp-action="Register" class="nav-link">
+                                <i class="fas fa-user-plus"></i>
+                                <span>Register</span>
+                            </a>
+                        </li>
+                    </div>
+                } else {
+                    <div class="auth-buttons">
+                        <li class="bottom-items">
+                            <form asp-controller="Auth" asp-action="Logout" method="post" class="nav-link logout-form">
+                                <button type="submit" class="btn-auth btn-logout">
+                                    <i class="fas fa-sign-out-alt"></i>
+                                    <span>Logout</span>
+                                </button>
+                            </form>
+                        </li>
+                    </div>
+                }
+            </ul>
+        </nav>
+
+        <!-- Page Content -->
+        <div id="content">
+            <nav class="navbar navbar-expand-lg navbar-light">
+                <div class="container-fluid">
+                    <div class=""></div>
+                    @if(User.Identity?.IsAuthenticated ?? false) {
+                        <div class="ml-auto d-flex align-items-center">
+                            <div class="user-info">
+                                <i class="fas fa-user-circle"></i>
+                                <span>Welcome, @User.Identity?.Name</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </nav>
+
+            <div class="content-wrapper animate__animated animate__fadeIn">
+                @RenderBody()
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/js/pagination.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

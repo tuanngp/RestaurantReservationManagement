@@ -1,0 +1,113 @@
+@using FUCourseManagement.Helpers
+@model IEnumerable<object>
+@{
+    var properties = new List<System.Reflection.PropertyInfo>();
+    if (Model != null && Model.Any())
+    {
+        var type = Model.First().GetType();
+        properties = type.GetProperties()
+            .Where(p =>!p.PropertyType.IsGenericType && 
+                       !p.Name.Contains("Collection") && 
+                       !p.Name.EndsWith("Navigation") && 
+                       !p.Name.Contains("Password"))
+            .ToList();
+    }
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Danh sách @ViewData["Title"]</h3>
+        <div class="card-tools">
+            <div class="input-group input-group-sm" style="width: 250px;">
+                <form asp-action="Search" method="get" style="display: flex;">
+                    <input type="text" name="searchText" class="form-control float-right" 
+                           placeholder="Tìm kiếm..." value="@ViewData["SearchText"]">
+                    <div class="input-group-append">
+                        <button type="submit" class="btn btn-default">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="card-body table-responsive p-0">
+        <table class="table table-hover text-nowrap" id="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    @if (properties != null)
+                    {
+                        foreach (var prop in properties)
+                        {
+                            <th>@PropertyHelper.GetDisplayName(prop)</th>
+                        }
+                    }
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null && properties != null)
+                {
+                    int index = 1;
+                    foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@index</td>
+                            @foreach (var prop in properties)
+                            {
+                                <td>@PropertyHelper.GetDisplayValue(item, prop)</td>
+                            }
+                            <td>
+                                <div class="btn-group">
+                                    @{
+                                        var idProp = item.GetType().GetProperties()
+                                        .FirstOrDefault(p => p.Name == "Id" || p.Name.EndsWith("Id"));
+                                        var idValue = idProp?.GetValue(item);
+                                    }
+                                    @if(User.IsInRole("Admin")) {
+                                        <a asp-action="Edit" asp-route-id="@idValue" class="btn btn-sm btn-info">
+                                            <i class="fa fa-edit"></i> Sửa
+                                        </a>
+                                    }
+                                    <a asp-action="Details" asp-route-id="@idValue" class="btn btn-sm btn-primary">
+                                        <i class="fa fa-eye"></i> Chi tiết
+                                    </a>
+                                    @if (User.IsInRole("Admin"))
+                                    {
+                                        <a asp-action="Delete" asp-route-id="@idValue" class="btn btn-sm btn-danger delete-item">
+                                            <i class="fa fa-trash"></i> Xóa
+                                        </a>
+                                    }
+                                    @if (User.IsInRole("User") && ViewData["Title"].Equals("Table"))
+                                    {
+                                        var status = ViewData["Status"] as Dictionary<int, bool>;
+                                        var isValid = status?.GetValueOrDefault(Convert.ToInt32(idValue)) ?? false;
+                                        
+                                        <form asp-controller="Tables" asp-action="Book" method="post" style="display:inline; margin-left:4px">
+                                            <input type="hidden" name="id" value="@idValue" />
+                                            <button type="submit" class="btn btn-sm @(isValid ? "btn-success" : "btn-warning")">
+                                                <i class="fa @(isValid ? "fa-plus" : "fa-times")"></i>
+                                                @(isValid ? "Book" : "Cancel")
+                                            </button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                        index++;
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="@(properties?.Count() + 2 ?? 2)" class="no-data-message">
+                            <i class="fas fa-inbox"></i>
+                            <span>Không có dữ liệu được tìm thấy</span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,230 @@
+@using FUCourseManagement.Helpers
+@using Microsoft.EntityFrameworkCore
+@model object
+
+@{
+    var properties = Model?.GetType().GetProperties()
+        .Where(p => !p.Name.Contains("Collection") &&
+                    !(p.Name.StartsWith("Id", StringComparison.OrdinalIgnoreCase)) &&
+                    !typeof(System.Collections.IEnumerable)
+                    .IsAssignableFrom(p.PropertyType) || p.PropertyType == typeof(string)
+        )
+        .ToList();
+    bool isCreateRetry = TempData["IsCreateRetry"] != null && (bool)TempData["IsCreateRetry"];
+    var idProperty = Model?.GetType().GetProperties()
+        .FirstOrDefault(p => p.Name == "Id" || p.Name.EndsWith("Id", StringComparison.OrdinalIgnoreCase));
+    var idValue = idProperty?.GetValue(Model);
+    bool isEdit = !isCreateRetry && idValue != null && !IsDefaultIdValue(idValue);
+}
+
+@functions {
+    private bool IsDefaultIdValue(object idValue)
+    {
+        if (idValue == null) return true;
+        if (idValue is int intValue) return intValue == 0;
+        if (idValue is Guid guidValue) return guidValue == Guid.Empty;
+        if (idValue is string strValue) return string.IsNullOrEmpty(strValue);
+        return false;
+    }
+}
+
+@functions {
+    private SelectList GetOptionsForNavigation(Type entityType, string selectedValue)
+    {
+        var context = new FUBusiness.Models.RestaurantReservationDbContext();
+        var method = typeof(DbContext).GetMethod("Set", Type.EmptyTypes).MakeGenericMethod(entityType);
+        var dbSet = method.Invoke(context, null);
+        
+        var queryable = ((IQueryable)dbSet);
+        var items = queryable.Cast<object>().ToList();
+        
+        var displayProp = entityType.GetProperties()
+            .FirstOrDefault(p => p.Name is "Name" or "Title" or "DisplayName" or "FullName");
+        
+        return new SelectList(items, "Id", displayProp?.Name ?? "Id", selectedValue);
+    }
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card animate__animated animate__fadeIn">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0">
+                    <i class="fas @(isEdit ? "fa-edit" : "fa-plus-circle") me-2"></i>
+                    @(isEdit ? "Chỉnh sửa" : "Thêm mới") @ViewData["Title"]
+                </h3>
+            </div>
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success" role="alert">
+                    @TempData["SuccessMessage"]
+                </div>
+            }
+
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger" role="alert">
+                    @TempData["ErrorMessage"]
+                </div>
+            }
+            <form asp-action="@(isEdit ? "Edit" : "Create")" method="post">
+                @if (isEdit)
+                {
+                    <input type="hidden" name="Id" value="@Model?.GetType().GetProperties().FirstOrDefault(p => p.Name == " Id" || p.Name.EndsWith("Id", StringComparison.OrdinalIgnoreCase))?.GetValue(Model)" />
+                }
+                
+                <div class="card-body">
+                    <div class="row">
+                        @if (Model != null && properties != null)
+                        {
+                            foreach (var prop in properties)
+                            {
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-group position-relative animate__animated animate__fadeIn">
+                                        <label class="form-label fw-bold mb-2">
+                                            <i class="fas @(PropertyHelper.IsNavigationId(prop) ? "fa-link" 
+                                                        : prop.PropertyType == typeof(DateTime) || prop.PropertyType == typeof(DateTime?) ? "fa-calendar" 
+                                                        : prop.PropertyType == typeof(bool) || prop.PropertyType == typeof(bool?) ? "fa-check-square" 
+                                                        : "fa-keyboard") me-2"></i>
+                                            @prop.Name
+                                        </label>
+                                        
+                                        @{
+                                            var value = prop.GetValue(Model);
+                                            var type = prop.PropertyType;
+
+                                            if (PropertyHelper.IsNavigationId(prop))
+                                            {
+                                                var navigationPropName = prop.Name.Substring(0, prop.Name.Length - 2);
+                                                var navigationType = Model.GetType().GetProperty(navigationPropName)?.PropertyType;
+                                                if (navigationType != null)
+                                                {
+                                                    var options = GetOptionsForNavigation(navigationType, value?.ToString());
+                                                    <div class="input-group">
+                                                        <span class="input-group-text"><i class="fas fa-link"></i></span>
+                                                        <select class="form-select" name="@prop.Name" asp-items="options">
+                                                            <option value="">-- Select @navigationPropName --</option>
+                                                        </select>
+                                                    </div>
+                                                }
+                                                @if (!ViewData.ModelState.IsValid && ViewData.ModelState[prop.Name]?.Errors.Count > 0)
+                                                {
+                                                    <div class="text-danger validation-message">
+                                                        @ViewData.ModelState[prop.Name].Errors.First().ErrorMessage
+                                                    </div>
+                                                }
+                                            }
+                                            else if (type == typeof(string))
+                                            {
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><i class="fas fa-keyboard"></i></span>
+                                                    <input type="text" class="form-control" name="@prop.Name" value="@value" placeholder="Enter @prop.Name" />
+                                                </div>
+                                                @if (!ViewData.ModelState.IsValid && ViewData.ModelState[prop.Name]?.Errors.Count > 0)
+                                                {
+                                                    <div class="text-danger validation-message">
+                                                        @ViewData.ModelState[prop.Name].Errors.First().ErrorMessage
+                                                    </div>
+                                                }
+                                            }
+                                            else if (type == typeof(DateTime) || type == typeof(DateTime?))
+                                            {
+                                                var dateValue = value as DateTime? ?? DateTime.Now;
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><i class="fas fa-calendar"></i></span>
+                                                    <input type="datetime-local" class="form-control" name="@prop.Name" value="@dateValue.ToString("yyyy-MM-ddTHH:mm")" />
+                                                </div>
+                                                @if (!ViewData.ModelState.IsValid && ViewData.ModelState[prop.Name]?.Errors.Count > 0)
+                                                {
+                                                    <div class="text-danger validation-message">
+                                                        @ViewData.ModelState[prop.Name].Errors.First().ErrorMessage
+                                                    </div>
+                                                }
+                                            }
+                                            else if (type == typeof(int) || type == typeof(int?) || type == typeof(long) || type == typeof(long?))
+                                            {
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><i class="fas fa-hashtag"></i></span>
+                                                    <input type="number" class="form-control" name="@prop.Name" value="@value" />
+                                                </div>
+                                                @if (!ViewData.ModelState.IsValid && ViewData.ModelState[prop.Name]?.Errors.Count > 0)
+                                                {
+                                                    <div class="text-danger validation-message">
+                                                        @ViewData.ModelState[prop.Name].Errors.First().ErrorMessage
+                                                    </div>
+                                                }
+                                            }
+                                            else if (type == typeof(decimal) || type == typeof(decimal?) || type == typeof(double) || type == typeof(double?))
+                                            {
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><i class="fas fa-dollar-sign"></i></span>
+                                                    <input type="number" class="form-control" name="@prop.Name" value="@value" step="0.01" />
+                                                </div>
+                                                @if (!ViewData.ModelState.IsValid && ViewData.ModelState[prop.Name]?.Errors.Count > 0)
+                                                {
+                                                    <div class="text-danger validation-message">
+                                                        @ViewData.ModelState[prop.Name].Errors.First().ErrorMessage
+                                                    </div>
+                                                }
+                                            }
+                                            else if (type == typeof(bool) || type == typeof(bool?))
+                                            {
+                                                <div class="form-check form-switch">
+                                                    <input type="checkbox" class="form-check-input" name="@prop.Name" id="@prop.Name" @((value as bool?) == true ? "checked" : "") />
+                                                    <label class="form-check-label" for="@prop.Name">
+                                                        <i class="fas fa-check-square me-2"></i>
+                                                        @PropertyHelper.GetDisplayName(prop)
+                                                    </label>
+                                                </div>
+                                                @if (!ViewData.ModelState.IsValid && ViewData.ModelState[prop.Name]?.Errors.Count > 0)
+                                                {
+                                                    <div class="text-danger validation-message">
+                                                        @ViewData.ModelState[prop.Name].Errors.First().ErrorMessage
+                                                    </div>
+                                                }
+
+                                            }
+                                            else if (type.IsEnum)
+                                            {
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><i class="fas fa-list"></i></span>
+                                                    <select class="form-select" name="@prop.Name">
+                                                        @foreach (var enumValue in Enum.GetValues(type))
+                                                        {
+                                                            var isSelected = value?.ToString() == enumValue.ToString();
+                                                            <option value="@enumValue" selected="@isSelected">@enumValue</option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                                @if (!ViewData.ModelState.IsValid && ViewData.ModelState[prop.Name]?.Errors.Count > 0)
+                                                {
+                                                    <div class="text-danger validation-message">
+                                                        @ViewData.ModelState[prop.Name].Errors.First().ErrorMessage
+                                                    </div>
+                                                }
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+                
+                <div class="card-footer d-flex justify-content-between">
+                    <a asp-action="Index" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i> Quay lại
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i> Lưu
+                        <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

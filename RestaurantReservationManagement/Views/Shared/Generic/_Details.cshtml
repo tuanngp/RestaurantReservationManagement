@@ -1,0 +1,43 @@
+@using FUCourseManagement.Helpers
+@model object
+@{
+    var properties = Model?.GetType().GetProperties()
+        .Where(p => !p.Name.Contains("Collection") &&
+                    !typeof(System.Collections.IEnumerable)
+                    .IsAssignableFrom(p.PropertyType) || p.PropertyType == typeof(string)
+        )
+        .ToList();
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Chi tiết @ViewData["Title"]</h3>
+    </div>
+    <div class="card-body">
+        <dl class="row">
+            @if (Model != null && properties != null)
+            {
+                foreach (var prop in properties)
+                {
+                    <dt class="col-sm-3">@PropertyHelper.GetDisplayName(prop)</dt>
+                    <dd class="col-sm-9">@PropertyHelper.GetDisplayValue(Model, prop)</dd>
+                }
+            }
+        </dl>
+    </div>
+    <div class="card-footer">
+        @{
+            var idProp = Model.GetType().GetProperties()
+            .FirstOrDefault(p => p.Name == "Id" || p.Name.EndsWith("Id"));
+            var idValue = idProp?.GetValue(Model);
+        }
+        @if(User.IsInRole("Admin")) {
+            <a asp-action="Edit" asp-route-id="@idValue" class="btn btn-info">
+                <i class="fa fa-edit"></i> Sửa
+            </a>
+        }
+        <a asp-action="Index" class="btn btn-default">
+            <i class="fa fa-arrow-left"></i> Quay lại
+        </a>
+    </div>
+</div>
