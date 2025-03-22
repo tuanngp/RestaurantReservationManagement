@@ -5,6 +5,7 @@
 @{
     var properties = Model?.GetType().GetProperties()
         .Where(p => !p.Name.Contains("Collection") &&
+                    !p.Name.Equals("CreatedAt") &&
                     !(p.Name.StartsWith("Id", StringComparison.OrdinalIgnoreCase)) &&
                     !typeof(System.Collections.IEnumerable)
                     .IsAssignableFrom(p.PropertyType) || p.PropertyType == typeof(string)

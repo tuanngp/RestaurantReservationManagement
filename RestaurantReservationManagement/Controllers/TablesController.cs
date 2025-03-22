@@ -1,8 +1,9 @@
-﻿using System.Security.Claims;
+﻿﻿﻿﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Repositories;
 using RestaurantBusiness.Models;
+using RestaurantReservationManagement.Models;
 
 namespace FUCourseManagement.Controllers
 {
@@ -29,12 +30,35 @@ namespace FUCourseManagement.Controllers
                 }
                 ViewData["Status"] = status;
             }
-            ViewData["Title"] = _entityName;
+            ViewData["Title"] = "Table";
             return View("~/Views/Shared/Generic/Index.cshtml", tables);
         }
 
+        [Authorize(Roles = "User")]
         [HttpGet]
         public async Task<IActionResult> Book(int id)
+        {
+            var table = await _repository.GetByIdAsync(id);
+            if (table == null)
+            {
+                TempData["ErrorMessage"] = "Không tìm thấy bàn.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var model = new BookTableViewModel
+            {
+                TableId = table.Id,
+                TableNumber = table.TableNumber,
+                Seats = table.Seats,
+                ReservationDateTime = DateTime.Now.AddHours(1) // Mặc định là 1 giờ sau
+            };
+
+            return View(model);
+        }
+
+        [Authorize(Roles = "User")]
+        [HttpPost]
+        public async Task<IActionResult> CancelBooking(int id)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
@@ -44,12 +68,12 @@ namespace FUCourseManagement.Controllers
 
             try
             {
-                await tableRepository.BookAsync(id, int.Parse(userId), DateTime.Now);
-                TempData["SuccessMessage"] = "Đặt bàn thành công!";
+                await tableRepository.CancelBookingAsync(id, int.Parse(userId));
+                TempData["SuccessMessage"] = "Hủy đặt bàn thành công!";
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] = "Error: " + ex.Message;
+                TempData["ErrorMessage"] = ex.Message;
             }
 
             return RedirectToAction(nameof(Index));
@@ -57,7 +81,7 @@ namespace FUCourseManagement.Controllers
 
         [Authorize(Roles = "User")]
         [HttpPost]
-        public async Task<IActionResult> Book(int id, DateTime dateTime)
+        public async Task<IActionResult> Book(BookTableViewModel model)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
@@ -65,17 +89,34 @@ namespace FUCourseManagement.Controllers
                 return RedirectToAction("Login", "Auth");
             }
 
+            if (!ModelState.IsValid)
+            {
+                var table = await _repository.GetByIdAsync(model.TableId);
+                if (table != null)
+                {
+                    model.TableNumber = table.TableNumber;
+                    model.Seats = table.Seats;
+                }
+                return View(model);
+            }
+
             try
             {
-                await tableRepository.BookAsync(id, int.Parse(userId), dateTime);
+                await tableRepository.BookAsync(model.TableId, int.Parse(userId), model.ReservationDateTime);
                 TempData["SuccessMessage"] = "Đặt bàn thành công!";
+                return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] = "Error: " + ex.Message;
+                TempData["ErrorMessage"] = ex.Message;
+                var table = await _repository.GetByIdAsync(model.TableId);
+                if (table != null)
+                {
+                    model.TableNumber = table.TableNumber;
+                    model.Seats = table.Seats;
+                }
+                return View(model);
             }
-
-            return RedirectToAction(nameof(Index));
         }
     }
 }

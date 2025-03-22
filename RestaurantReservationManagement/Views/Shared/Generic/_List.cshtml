@@ -79,18 +79,40 @@
                                             <i class="fa fa-trash"></i> Xóa
                                         </a>
                                     }
-                                    @if (User.IsInRole("User") && ViewData["Title"].Equals("Table"))
+                                    @if (User.IsInRole("User") && ViewData["Title"]?.ToString() == "Table")
                                     {
                                         var status = ViewData["Status"] as Dictionary<int, bool>;
-                                        var isValid = status?.GetValueOrDefault(Convert.ToInt32(idValue)) ?? false;
+                                        var currentId = Convert.ToInt32(idValue);
+                                        var isValid = status?.GetValueOrDefault(currentId) ?? false;
                                         
-                                        <form asp-controller="Tables" asp-action="Book" method="post" style="display:inline; margin-left:4px">
-                                            <input type="hidden" name="id" value="@idValue" />
-                                            <button type="submit" class="btn btn-sm @(isValid ? "btn-success" : "btn-warning")">
-                                                <i class="fa @(isValid ? "fa-plus" : "fa-times")"></i>
-                                                @(isValid ? "Book" : "Cancel")
-                                            </button>
-                                        </form>
+                                        <div class="debug-info" style="display:none; background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 10px; margin: 10px 0; border-radius: 4px;">
+                                            <div style="margin-bottom: 5px; font-weight: bold;">Debug Information:</div>
+                                            <div style="font-family: monospace; font-size: 12px;">
+                                                <p style="margin: 2px 0;">ViewData["Title"]: <span style="color: #007bff;">@ViewData["Title"]</span></p>
+                                                <p style="margin: 2px 0;">IsUserRole: <span style="color: #28a745;">@User.IsInRole("User")</span></p>
+                                                <p style="margin: 2px 0;">Status Dictionary: <span style="color: #dc3545;">@(status != null ? "Not null" : "Null")</span></p>
+                                                <p style="margin: 2px 0;">Current ID: <span style="color: #6f42c1;">@currentId</span></p>
+                                                <p style="margin: 2px 0;">IsValid: <span style="color: #fd7e14;">@isValid</span></p>
+                                            </div>
+                                        </div>
+
+                                        @if (isValid)
+                                        {
+                                            <a asp-controller="Tables" asp-action="Book" asp-route-id="@idValue"
+                                               class="btn btn-sm btn-success">
+                                                <i class="fa fa-plus"></i> Book
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <form asp-controller="Tables" asp-action="CancelBooking" method="post" style="display:inline;">
+                                                <input type="hidden" name="id" value="@idValue" />
+                                                <button type="submit" class="btn btn-sm btn-warning"
+                                                        onclick="return confirm('Bạn có chắc chắn muốn hủy đặt bàn này?')">
+                                                    <i class="fa fa-times"></i> Hủy đặt bàn
+                                                </button>
+                                            </form>
+                                        }
                                     }
                                 </div>
                             </td>
@@ -111,3 +133,18 @@
         </table>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        // Add debug toggle button
+        $(document).ready(function() {
+            $('.card-header').append(
+                '<button class="btn btn-info btn-sm float-right mr-2" onclick="toggleDebug()">Toggle Debug Info</button>'
+            );
+        });
+
+        function toggleDebug() {
+            $('.debug-info').toggle();
+        }
+    </script>
+}

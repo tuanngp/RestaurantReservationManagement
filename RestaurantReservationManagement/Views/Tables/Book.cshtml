@@ -1,0 +1,73 @@
+@model RestaurantReservationManagement.Models.BookTableViewModel
+
+<div class="container-fluid">
+    <div class="row mb-2">
+        <div class="col-sm-12">
+            <ol class="breadcrumb float-sm-right">
+                <li class="breadcrumb-item"><a asp-controller="Tables" asp-action="Index">Danh sách bàn</a></li>
+                <li class="breadcrumb-item active">Đặt bàn</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Đặt bàn</h3>
+                </div>
+                <form asp-action="Book" method="post">
+                    <div class="card-body">
+                        <input type="hidden" asp-for="TableId" />
+                        
+                        <div class="form-group">
+                            <label class="font-weight-bold">Thông tin bàn</label>
+                            <p class="form-control-static">
+                                Bàn số: @Model.TableNumber<br />
+                                Số chỗ ngồi: @Model.Seats
+                            </p>
+                        </div>
+
+                        <div class="form-group">
+                            <label asp-for="ReservationDateTime">Thời gian đặt bàn</label>
+                            <input asp-for="ReservationDateTime" class="form-control" type="datetime-local" required />
+                            <span asp-validation-for="ReservationDateTime" class="text-danger"></span>
+                            <small class="form-text text-muted">
+                                * Giờ hoạt động: 8:00 - 22:00<br />
+                                * Chỉ được đặt bàn trong vòng 30 ngày
+                            </small>
+                        </div>
+
+                        @if (TempData["ErrorMessage"] != null)
+                        {
+                            <div class="alert alert-danger">
+                                @TempData["ErrorMessage"]
+                            </div>
+                        }
+                    </div>
+                    <div class="card-footer">
+                        <a asp-action="Index" class="btn btn-secondary">Quay lại</a>
+                        <button type="submit" class="btn btn-primary">Xác nhận đặt bàn</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function() {
+            // Set min datetime to now
+            var now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            $('#ReservationDateTime').attr('min', now.toISOString().slice(0, 16));
+            
+            // Set max datetime to 30 days from now
+            var max = new Date();
+            max.setDate(max.getDate() + 30);
+            $('#ReservationDateTime').attr('max', max.toISOString().slice(0, 16));
+        });
+    </script>
+}
